@@ -19,6 +19,11 @@ const routes = [
         name: 'book',
         component: () => import("@/views/Book"),
       },
+      {
+        path: 'news',
+        name: 'News',
+        component: () => import("@/views/News"),
+      },
     ]
   },
   {

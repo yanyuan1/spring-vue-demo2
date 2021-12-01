@@ -11,8 +11,12 @@
             <el-input v-model="form.password"  show-password ></el-input>
           </el-form-item>
           <el-form-item>
-           <el-button style="width: 50% " type="primary" @click="login"> 登录</el-button>
+            <el-button style="width: 100% " type="primary" @click="login"> 登录</el-button>
           </el-form-item>
+          <el-form-item>
+            <el-button style="width: 100% " type="primary" @click="$router.push('/register')"> 注册</el-button>
+          </el-form-item>
+
         </el-form>
       </div>
   </div>

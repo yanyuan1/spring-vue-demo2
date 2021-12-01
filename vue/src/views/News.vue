@@ -21,31 +21,20 @@
     <el-table :data="tableData"
               border
               stripe >
-      <el-table-column prop="id" label="ID"   sortable/>
-      <el-table-column prop="name" label="名称"  />
-      <el-table-column prop="price" label="价格"  />
+      <el-table-column prop="id" label="ID" sortable/>
+      <el-table-column prop="title" label="标题"  />
+<!--      <el-table-column prop="content" label="内容"  />-->
       <el-table-column prop="author" label="作者"  />
-      <el-table-column prop="createTime" label="出版日期"  />
-      <el-table-column  label="封面"  >
+      <el-table-column prop="time" label="发布日期"  />
+      <el-table-column fixed="right" label="操作" >
         <template #default="scope">
-          <el-image
-              style="width: 100px; height: 100px"
-              :src="scope.row.cover"
-              :preview-src-list="[scope.row.cover]"
-              :initial-index="1"
-          >
-          </el-image>
-        </template>
-      </el-table-column>
-      <el-table-column fixed="right" label="Operations" >
-        <template #default="scope">
+          <el-button type="primary" size="small" @click="details(scope.row)">详情</el-button>
           <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
           <el-popconfirm title="确定删除吗?" @confirm="handleDelete(scope.row.id)">
             <template #reference>
               <el-button type="danger" size="small" >删除</el-button>
             </template>
           </el-popconfirm>
-
         </template>
       </el-table-column>
     </el-table>
@@ -61,37 +50,24 @@
       >
       </el-pagination>
 
-      <el-dialog
-          v-model="dialogVisible"
-          title="用户信息"
-          width="30%">
+      <el-dialog v-model="dialogVisible" title="用户信息"  width="50%">
         <el-form  :model="form"  >
-          <el-form-item label="名称" label-width="120px">
-            <el-input v-model="form.name" style="width: 50%"></el-input>
+          <el-form-item label="标题" label-width="120px">
+            <el-input v-model="form.title" style="width: 50%"></el-input>
           </el-form-item>
-          <el-form-item label="价格" label-width="120px">
-            <el-input v-model="form.price" style="width: 50%"></el-input>
-          </el-form-item>
-          <el-form-item label="作者" label-width="120px">
-            <el-input v-model="form.author" style="width: 50%"></el-input>
-          </el-form-item>
-          <el-form-item label="出版日期" label-width="120px">
-            <el-date-picker  v-model="form.createTime" value-format="YYYY-MM-DD" type="date" style="width: 80%" clearable>
-            </el-date-picker>
-          </el-form-item>
-          <el-form-item label="封面"  label-width="120px">
-            <el-upload  ref="upload"  action="http://localhost:9090/files/upload"  :on-success="filesUploadSuccess">
-              <el-button size="small" type="primary">Click to upload</el-button>
-            </el-upload>
-          </el-form-item>
+          <div id="div1"></div>
         </el-form>
-
         <template #footer>
             <span class="dialog-footer">
                 <el-button @click="dialogVisible = false">Cancel</el-button>
                 <el-button type="primary" @click="save">Confirm</el-button>
             </span>
         </template>
+      </el-dialog>
+      <el-dialog v-model="vis" title="详情"  width="50%">
+        <el-card>
+          <div v-html="detail.content" style="min-height:100px"></div>
+        </el-card>
       </el-dialog>
     </div>
   </div>
@@ -102,9 +78,10 @@
 
 import request from "@/utils/request";
 import {ElMessage} from "element-plus";
-
+import E from 'wangeditor';
+let editor;
 export default {
-  name: 'Book',
+  name: 'News',
   components: {
   },
 
@@ -118,21 +95,28 @@ export default {
       currentPage:1,
       total:10,
       pageSize:10,
-      tableData: [
-
-      ]
+      tableData: [],
+      user:{},
+      detail:{},
+      vis:false,
     }
   },
   created(){
     this.load()
   },
+  mounted() {
+  },
   methods: {
+    details(row){
+      this.detail = row
+      this.vis = true
+    },
     filesUploadSuccess(res){
       console.log(res)
       this.form.cover = res.data
     },
     load(){
-      request.get("/book",{
+      request.get("/news",{
         params:{
           pageNum:this.currentPage,
           pageSize:this.pageSize,
@@ -148,13 +132,24 @@ export default {
     add(){
       this.dialogVisible = true
       this.form = {}
-      if(this.$refs['upload']){
-        this.$refs['upload'].clearFiles()
-      }
+      this.$nextTick(() => {
+
+        if(!editor){
+          editor = new E('#div1')
+          // 配置 server 接口地址
+          editor.config.uploadImgServer = 'http://localhost:9090/files/editor/upload'
+          editor.config.uploadFileName = 'file'
+          editor.create()
+        }
+        editor.txt.html("")
+      })
+
     },
     save(){
+
+      this.form.content = editor.txt.html()   //获取编辑器里面的值，再传给后端
       if(this.form.id){
-        request.put("/book",this.form).then(res => {
+        request.put("/news",this.form).then(res => {
           console.log(res)
           if(res.code === '0'){
             ElMessage({
@@ -173,12 +168,15 @@ export default {
 
         })
       }else{
-        request.post("/book",this.form).then(res => {
+        let userStr = sessionStorage.getItem("user") || "{}"
+        let user = JSON.parse(userStr)
+        this.form.author =  user.username
+        request.post("/news",this.form).then(res => {
           console.log(res)
           if(res.code === '0'){
             ElMessage({
               type:"success",
-              message:"增加成功"
+              message:"新增成功"
             })
           }else {
             ElMessage({
@@ -195,7 +193,7 @@ export default {
     },
     handleDelete(id){
       console.log(id)
-      request.delete("/book/" + id).then(res => {
+      request.delete("/news/" + id).then(res => {
         if(res.code === '0'){
           ElMessage({
             type:"success",
@@ -213,12 +211,19 @@ export default {
     handleEdit(row) {
       this.form = JSON.parse(JSON.stringify(row))
       this.dialogVisible = true
-      this.$nextTick(() => {
-        if(this.$refs['upload']){
-          this.$refs['upload'].clearFiles()
-        }
-      })
 
+      this.$nextTick(() => {
+        if (!editor) {
+          editor = new E('#div1')
+
+          // 配置 server 接口地址
+          editor.config.uploadImgServer = 'http://localhost:9090/files/editor/upload'
+          editor.config.uploadFileName = "file"  // 设置上传参数名称
+          editor.create()
+        }
+
+        editor.txt.html(row.content)
+      })
     },
     handleSizeChange(pageSize){  //改变当前每页个数
       this.pageSize = pageSize
